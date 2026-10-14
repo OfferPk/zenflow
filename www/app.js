@@ -16,6 +16,8 @@
   const hudLevelTitle = document.getElementById('hud-level-title');
   const hudFlows = document.getElementById('hud-flows');
   const hudPipe = document.getElementById('hud-pipe');
+  const hudPipeMeter = document.getElementById('hud-pipe-meter');
+  const hudPipeFill = document.getElementById('hud-pipe-fill');
   const hudMoves = document.getElementById('hud-moves');
   const hudTime = document.getElementById('hud-time');
 
@@ -186,6 +188,8 @@
 
     const coverage = game.getCoverage();
     hudPipe.textContent = `${coverage.percentage}%`;
+    hudPipeFill.style.width = `${coverage.percentage}%`;
+    hudPipeMeter.setAttribute('aria-valuenow', String(coverage.percentage));
     hudMoves.textContent = String(game.moves);
 
     // Navigation buttons state
@@ -549,7 +553,11 @@
     packTabsContainer.innerHTML = '';
     PACKS.forEach((pack) => {
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = `pack-tab ${pack.id === currentPackId ? 'active' : ''}`;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(pack.id === currentPackId));
+      btn.setAttribute('aria-controls', 'levels-grid-container');
       btn.textContent = pack.name;
       btn.style.setProperty('--tab-accent', pack.color);
       btn.addEventListener('click', () => {
@@ -569,9 +577,14 @@
     levels.forEach((lvl, idx) => {
       const saved = progressData[lvl.id] || { stars: 0 };
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = `level-grid-btn ${saved.stars > 0 ? 'completed' : ''} ${
         idx === currentLevelIdx && lvl.packId === currentPackId ? 'current' : ''
       }`;
+      btn.setAttribute('aria-label', `Level ${idx + 1}, ${saved.stars || 0} of 3 stars`);
+      if (idx === currentLevelIdx && lvl.packId === currentPackId) {
+        btn.setAttribute('aria-current', 'step');
+      }
 
       btn.innerHTML = `
         <span class="lvl-num">${idx + 1}</span>
@@ -630,6 +643,13 @@
     btnPackSwitch.addEventListener('click', () => {
       audio.playTap();
       openLevelSelect();
+    });
+    btnPackSwitch.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        audio.playTap();
+        openLevelSelect();
+      }
     });
     btnCloseLevels.addEventListener('click', () => {
       audio.playTap();

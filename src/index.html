@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0F172A">
+  <meta name="theme-color" content="#080D16">
   <meta name="description" content="ZenFlow — sleek, calm offline color connect and flow puzzle.">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -23,7 +23,7 @@
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-        <div class="level-meta" id="btn-pack-switch">
+        <div class="level-meta" id="btn-pack-switch" role="button" tabindex="0" aria-label="Select a level">
           <span class="pack-badge" id="hud-pack-name">Starter 5x5</span>
           <h1 class="level-title" id="hud-level-title">Level 1</h1>
         </div>
@@ -55,9 +55,12 @@
         <span class="metric-label">Flows</span>
         <span class="metric-value highlight" id="hud-flows">0 / 5</span>
       </div>
-      <div class="metric-card">
-        <span class="metric-label">Pipe</span>
+      <div class="metric-card metric-card--pipe">
+        <span class="metric-label">Pipe fill</span>
         <span class="metric-value" id="hud-pipe">0%</span>
+        <div class="metric-track" id="hud-pipe-meter" role="progressbar" aria-label="Board coverage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span id="hud-pipe-fill"></span>
+        </div>
       </div>
       <div class="metric-card">
         <span class="metric-label">Moves</span>
@@ -72,7 +75,7 @@
     <!-- Board Arena -->
     <main class="board-area">
       <div class="board-wrapper" id="board-wrapper">
-        <canvas id="flow-canvas"></canvas>
+        <canvas id="flow-canvas" aria-label="Game board. Connect matching colored nodes to complete each flow."></canvas>
       </div>
     </main>
 
@@ -119,7 +122,7 @@
     </footer>
 
     <!-- Victory Modal -->
-    <div id="modal-victory" class="modal-backdrop hidden">
+    <div id="modal-victory" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="victory-heading">
       <div class="modal-card victory-card">
         <canvas id="confetti-canvas"></canvas>
         <div class="stars-row" id="victory-stars">
@@ -153,15 +156,15 @@
     </div>
 
     <!-- Level Select Modal -->
-    <div id="modal-levels" class="modal-backdrop hidden">
+    <div id="modal-levels" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="levels-heading">
       <div class="modal-card full-card">
         <div class="modal-header">
-          <h2>Select Level</h2>
-          <button id="btn-close-levels" class="icon-btn close-btn">✕</button>
+          <h2 id="levels-heading">Select Level</h2>
+          <button id="btn-close-levels" class="icon-btn close-btn" aria-label="Close level selection">✕</button>
         </div>
 
         <!-- Pack Tabs -->
-        <div class="pack-tabs" id="pack-tabs-container"></div>
+        <div class="pack-tabs" id="pack-tabs-container" role="tablist" aria-label="Level packs"></div>
 
         <!-- Level Grid -->
         <div class="levels-grid" id="levels-grid-container"></div>
@@ -169,11 +172,11 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="modal-settings" class="modal-backdrop hidden">
+    <div id="modal-settings" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-heading">
       <div class="modal-card">
         <div class="modal-header">
-          <h2>Settings</h2>
-          <button id="btn-close-settings" class="icon-btn close-btn">✕</button>
+          <h2 id="settings-heading">Settings</h2>
+          <button id="btn-close-settings" class="icon-btn close-btn" aria-label="Close settings">✕</button>
         </div>
 
         <div class="settings-list">
