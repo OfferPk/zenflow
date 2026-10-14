@@ -1,0 +1,28 @@
+{
+  "name": "zenflow",
+  "version": "1.0.0",
+  "description": "ZenFlow: sleek, calm offline color connect & flow puzzle",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "node --test test/logic.test.js",
+    "build": "node scripts/build.js",
+    "cap:add": "cap add android",
+    "cap:sync": "cap sync android"
+  },
+  "keywords": [
+    "flow",
+    "connect",
+    "puzzle",
+    "offline",
+    "capacitor",
+    "pwa",
+    "vanilla-js"
+  ],
+  "author": "OfferPk",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}
