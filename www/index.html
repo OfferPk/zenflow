@@ -182,22 +182,22 @@
         <div class="settings-list">
           <div class="setting-item">
             <div>
-              <div class="setting-title">Colorblind Labels</div>
-              <div class="setting-desc">Display letter codes inside color nodes</div>
+              <div class="setting-title" id="setting-colorblind-title">Colorblind Labels</div>
+              <div class="setting-desc" id="setting-colorblind-description">Display letter codes inside color nodes</div>
             </div>
             <label class="switch">
-              <input type="checkbox" id="toggle-colorblind" checked>
+              <input type="checkbox" id="toggle-colorblind" aria-labelledby="setting-colorblind-title" aria-describedby="setting-colorblind-description" checked>
               <span class="slider"></span>
             </label>
           </div>
 
           <div class="setting-item">
             <div>
-              <div class="setting-title">Haptic Feedback</div>
-              <div class="setting-desc">Gentle vibration pulses on mobile</div>
+              <div class="setting-title" id="setting-haptics-title">Haptic Feedback</div>
+              <div class="setting-desc" id="setting-haptics-description">Gentle vibration pulses on mobile</div>
             </div>
             <label class="switch">
-              <input type="checkbox" id="toggle-haptics" checked>
+              <input type="checkbox" id="toggle-haptics" aria-labelledby="setting-haptics-title" aria-describedby="setting-haptics-description" checked>
               <span class="slider"></span>
             </label>
           </div>
