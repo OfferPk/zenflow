@@ -603,7 +603,7 @@ input:checked + .slider:before {
   --border-focus: rgba(105, 231, 211, 0.68);
   --text-primary: #f2f7ff;
   --text-secondary: #a8b8cc;
-  --text-muted: #75869e;
+  --text-muted: #9badc5;
   --accent-cyan: #68e7d3;
 }
 
@@ -638,8 +638,8 @@ html, body {
 }
 
 .level-meta:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 5px;
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 4px;
 }
 
 .pack-badge {
@@ -918,9 +918,14 @@ html, body {
 .setting-title { font-size: 0.91rem; }
 .setting-desc { margin-top: 3px; line-height: 1.45; }
 
-/* Visible keyboard focus, with reduced motion honored throughout. */
+/* Visible keyboard focus, including the custom visual for visually hidden toggles. */
 :where(button, [role="button"], input):focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 3px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+
+.switch input:focus-visible + .slider {
+  outline: 3px solid var(--accent-cyan);
   outline-offset: 3px;
 }
 
