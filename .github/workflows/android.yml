@@ -43,8 +43,13 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Add Capacitor Android platform
-        run: npx cap add android
+      - name: Setup or sync Capacitor Android
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            npx cap sync android
+          fi
 
       - name: Assemble Android Debug APK
         working-directory: android
