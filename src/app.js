@@ -202,7 +202,7 @@
     const availableWidth = rect.width - 24;
     const availableHeight = rect.height - 24;
     const rawDim = Math.min(availableWidth, availableHeight, 520);
-    const side = Math.max(rawDim, 260);
+    const side = Math.max(rawDim, 1);
 
     canvas.width = Math.floor(side * dpr);
     canvas.height = Math.floor(side * dpr);
@@ -543,6 +543,7 @@
     renderPackTabs();
     renderLevelsGrid();
     modalLevels.classList.remove('hidden');
+    btnCloseLevels.focus();
   }
 
   function renderPackTabs() {
@@ -596,12 +597,14 @@
       iconSoundOn.classList.add('hidden');
       iconSoundOff.classList.remove('hidden');
     }
+    btnSound.setAttribute('aria-pressed', String(audio.enabled));
   }
 
   function openSettings() {
     toggleColorblind.checked = userSettings.colorblind;
     toggleHaptics.checked = userSettings.haptics;
     modalSettings.classList.remove('hidden');
+    btnCloseSettings.focus();
   }
 
   // --- Event Listeners Registration ---
@@ -630,6 +633,12 @@
     btnPackSwitch.addEventListener('click', () => {
       audio.playTap();
       openLevelSelect();
+    });
+    btnPackSwitch.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        btnPackSwitch.click();
+      }
     });
     btnCloseLevels.addEventListener('click', () => {
       audio.playTap();
@@ -732,6 +741,21 @@
 
     // Keyboard Shortcuts for accessibility
     window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!modalLevels.classList.contains('hidden')) {
+          modalLevels.classList.add('hidden');
+          btnPackSwitch.focus();
+        } else if (!modalSettings.classList.contains('hidden')) {
+          modalSettings.classList.add('hidden');
+          btnSettings.focus();
+        } else if (!modalVictory.classList.contains('hidden')) {
+          modalVictory.classList.add('hidden');
+          btnVicNext.focus();
+        }
+        return;
+      }
+      if (!modalLevels.classList.contains('hidden') || !modalSettings.classList.contains('hidden') || !modalVictory.classList.contains('hidden')) return;
+
       if (e.key === 'u' || e.key === 'z') {
         if (game.undo()) {
           audio.playTap();
