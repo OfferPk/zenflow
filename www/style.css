@@ -945,6 +945,31 @@ html, body {
   .action-btn { height: 46px; }
 }
 
+@media (orientation: landscape) and (max-height: 520px) {
+  .board-wrapper {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    flex: 0 1 auto;
+  }
+
+  .modal-card:not(.full-card) {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 360px) {
+  .top-bar { min-height: 48px; padding-block: 4px; }
+  .metrics-hud { padding-block: 2px 6px; }
+  .metric-card { min-height: 40px; padding-block: 4px; }
+  .metric-label { font-size: 0.56rem; }
+  .metric-value { font-size: 0.9rem; }
+  .board-area { padding-block: 2px 4px; }
+  .bottom-toolbar { padding-block: 4px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;

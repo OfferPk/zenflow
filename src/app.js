@@ -206,7 +206,7 @@
     const availableWidth = rect.width - 24;
     const availableHeight = rect.height - 24;
     const rawDim = Math.min(availableWidth, availableHeight, 520);
-    const side = Math.max(rawDim, 260);
+    const side = Math.max(rawDim, 1);
 
     canvas.width = Math.floor(side * dpr);
     canvas.height = Math.floor(side * dpr);
