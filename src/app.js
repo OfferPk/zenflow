@@ -542,11 +542,75 @@
     animConfetti();
   }
 
+  // --- Keyboard-managed dialogs ---
+  const DIALOG_FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  let activeManagedDialog = null;
+  let dialogReturnFocus = null;
+
+  function getDialogFocusableElements(dialog) {
+    return Array.from(dialog.querySelectorAll(DIALOG_FOCUSABLE_SELECTOR)).filter((element) =>
+      element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true'
+    );
+  }
+
+  function openManagedDialog(dialog, returnTarget, initialTarget) {
+    if (activeManagedDialog && activeManagedDialog !== dialog) {
+      closeManagedDialog(activeManagedDialog, false);
+    }
+    activeManagedDialog = dialog;
+    dialogReturnFocus = returnTarget;
+    dialog.classList.remove('hidden');
+    const target = initialTarget || getDialogFocusableElements(dialog)[0];
+    if (target) target.focus({ preventScroll: true });
+  }
+
+  function closeManagedDialog(dialog = activeManagedDialog, restoreFocus = true) {
+    if (!dialog) return;
+    dialog.classList.add('hidden');
+    if (dialog !== activeManagedDialog) return;
+
+    const returnTarget = dialogReturnFocus;
+    activeManagedDialog = null;
+    dialogReturnFocus = null;
+    if (restoreFocus && returnTarget && returnTarget.isConnected) {
+      returnTarget.focus({ preventScroll: true });
+    }
+  }
+
+  function handleManagedDialogKeydown(event) {
+    if (!activeManagedDialog) return false;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeManagedDialog();
+      return true;
+    }
+    if (event.key !== 'Tab') return true;
+
+    const focusable = getDialogFocusableElements(activeManagedDialog);
+    if (!focusable.length) {
+      event.preventDefault();
+      activeManagedDialog.focus({ preventScroll: true });
+      return true;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const focusIsOutside = !activeManagedDialog.contains(document.activeElement);
+    if (event.shiftKey && (document.activeElement === first || focusIsOutside)) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && (document.activeElement === last || focusIsOutside)) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+    return true;
+  }
+
   // --- Level Selection Modal ---
-  function openLevelSelect() {
+  function openLevelSelect(returnTarget) {
     renderPackTabs();
     renderLevelsGrid();
-    modalLevels.classList.remove('hidden');
+    openManagedDialog(modalLevels, returnTarget, btnCloseLevels);
   }
 
   function renderPackTabs() {
@@ -555,15 +619,18 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `pack-tab ${pack.id === currentPackId ? 'active' : ''}`;
+      btn.id = `pack-tab-${pack.id}`;
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', String(pack.id === currentPackId));
       btn.setAttribute('aria-controls', 'levels-grid-container');
+      btn.tabIndex = pack.id === currentPackId ? 0 : -1;
       btn.textContent = pack.name;
       btn.style.setProperty('--tab-accent', pack.color);
       btn.addEventListener('click', () => {
         currentPackId = pack.id;
         renderPackTabs();
         renderLevelsGrid();
+        packTabsContainer.querySelector('.pack-tab.active')?.focus({ preventScroll: true });
         audio.playTap();
       });
       packTabsContainer.appendChild(btn);
@@ -572,6 +639,8 @@
 
   function renderLevelsGrid() {
     levelsGridContainer.innerHTML = '';
+    levelsGridContainer.setAttribute('role', 'tabpanel');
+    levelsGridContainer.setAttribute('aria-labelledby', `pack-tab-${currentPackId}`);
     const levels = getPackLevels(currentPackId);
 
     levels.forEach((lvl, idx) => {
@@ -593,6 +662,7 @@
 
       btn.addEventListener('click', () => {
         audio.playTap();
+        closeManagedDialog(modalLevels);
         startLevel(currentPackId, idx);
       });
 
@@ -611,10 +681,10 @@
     }
   }
 
-  function openSettings() {
+  function openSettings(returnTarget) {
     toggleColorblind.checked = userSettings.colorblind;
     toggleHaptics.checked = userSettings.haptics;
-    modalSettings.classList.remove('hidden');
+    openManagedDialog(modalSettings, returnTarget, btnCloseSettings);
   }
 
   // --- Event Listeners Registration ---
@@ -638,31 +708,50 @@
     // Menus & Modals
     btnMenu.addEventListener('click', () => {
       audio.playTap();
-      openLevelSelect();
+      openLevelSelect(btnMenu);
     });
     btnPackSwitch.addEventListener('click', () => {
       audio.playTap();
-      openLevelSelect();
+      openLevelSelect(btnPackSwitch);
     });
     btnPackSwitch.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         audio.playTap();
-        openLevelSelect();
+        openLevelSelect(btnPackSwitch);
       }
+    });
+    packTabsContainer.addEventListener('keydown', (event) => {
+      if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+      const tabs = Array.from(packTabsContainer.querySelectorAll('[role="tab"]'));
+      const currentIndex = tabs.indexOf(document.activeElement);
+      if (currentIndex < 0 || !tabs.length) return;
+
+      event.preventDefault();
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+      else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else nextIndex = tabs.length - 1;
+
+      currentPackId = PACKS[nextIndex].id;
+      renderPackTabs();
+      renderLevelsGrid();
+      packTabsContainer.querySelector('.pack-tab.active')?.focus({ preventScroll: true });
+      audio.playTap();
     });
     btnCloseLevels.addEventListener('click', () => {
       audio.playTap();
-      modalLevels.classList.add('hidden');
+      closeManagedDialog(modalLevels);
     });
 
     btnSettings.addEventListener('click', () => {
       audio.playTap();
-      openSettings();
+      openSettings(btnSettings);
     });
     btnCloseSettings.addEventListener('click', () => {
       audio.playTap();
-      modalSettings.classList.add('hidden');
+      closeManagedDialog(modalSettings);
     });
 
     // Undo, Reset, Hint, Navigation
@@ -745,13 +834,14 @@
         try {
           localStorage.removeItem(STORAGE_KEY_PROGRESS);
         } catch (e) {}
-        modalSettings.classList.add('hidden');
+        closeManagedDialog(modalSettings);
         startLevel(currentPackId, 0);
       }
     });
 
     // Keyboard Shortcuts for accessibility
     window.addEventListener('keydown', (e) => {
+      if (handleManagedDialogKeydown(e)) return;
       if (e.key === 'u' || e.key === 'z') {
         if (game.undo()) {
           audio.playTap();
