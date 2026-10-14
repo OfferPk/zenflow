@@ -1,0 +1,8 @@
+{
+  "appId": "pk.offer.zenflow",
+  "appName": "ZenFlow",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

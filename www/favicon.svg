@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#090D16" />
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Rounded Base -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4" />
+
+  <!-- Flow Paths -->
+  <!-- Cyan Flow -->
+  <path d="M 128 128 L 128 256 L 256 256" fill="none" stroke="#00C7BE" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  <path d="M 128 128 L 128 256 L 256 256" fill="none" stroke="#E0FFFC" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Pink / Magenta Flow -->
+  <path d="M 256 128 L 384 128 L 384 256" fill="none" stroke="#FF2D55" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  <path d="M 256 128 L 384 128 L 384 256" fill="none" stroke="#FFE4EA" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Amber Flow -->
+  <path d="M 128 384 L 256 384 L 256 320" fill="none" stroke="#FFCC00" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  <path d="M 128 384 L 256 384 L 256 320" fill="none" stroke="#FFFBE6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Purple Flow -->
+  <path d="M 384 384 L 384 320 L 320 320" fill="none" stroke="#AF52DE" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  <path d="M 384 384 L 384 320 L 320 320" fill="none" stroke="#F6E8FF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Endpoints with Glowing Rings -->
+  <!-- Cyan Nodes -->
+  <circle cx="128" cy="128" r="36" fill="#00C7BE" filter="url(#glow)" />
+  <circle cx="128" cy="128" r="24" fill="#FFFFFF" opacity="0.4" />
+  <circle cx="256" cy="256" r="36" fill="#00C7BE" filter="url(#glow)" />
+  <circle cx="256" cy="256" r="24" fill="#FFFFFF" opacity="0.4" />
+
+  <!-- Pink Nodes -->
+  <circle cx="256" cy="128" r="36" fill="#FF2D55" filter="url(#glow)" />
+  <circle cx="256" cy="128" r="24" fill="#FFFFFF" opacity="0.4" />
+  <circle cx="384" cy="256" r="36" fill="#FF2D55" filter="url(#glow)" />
+  <circle cx="384" cy="256" r="24" fill="#FFFFFF" opacity="0.4" />
+
+  <!-- Amber Nodes -->
+  <circle cx="128" cy="384" r="36" fill="#FFCC00" filter="url(#glow)" />
+  <circle cx="128" cy="384" r="24" fill="#FFFFFF" opacity="0.4" />
+  <circle cx="256" cy="320" r="36" fill="#FFCC00" filter="url(#glow)" />
+  <circle cx="256" cy="320" r="24" fill="#FFFFFF" opacity="0.4" />
+
+  <!-- Purple Nodes -->
+  <circle cx="384" cy="384" r="36" fill="#AF52DE" filter="url(#glow)" />
+  <circle cx="384" cy="384" r="24" fill="#FFFFFF" opacity="0.4" />
+  <circle cx="320" cy="320" r="36" fill="#AF52DE" filter="url(#glow)" />
+  <circle cx="320" cy="320" r="24" fill="#FFFFFF" opacity="0.4" />
+</svg>
