@@ -3,7 +3,7 @@
  * Cache-first offline strategy ensuring zero network dependency after initial load.
  */
 
-const CACHE_NAME = 'zenflow-v2';
+const CACHE_NAME = 'zenflow-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

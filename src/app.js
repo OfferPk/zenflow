@@ -737,7 +737,9 @@
       currentPackId = PACKS[nextIndex].id;
       renderPackTabs();
       renderLevelsGrid();
-      packTabsContainer.querySelector('.pack-tab.active')?.focus({ preventScroll: true });
+      const activeTab = packTabsContainer.querySelector('.pack-tab.active');
+      activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      activeTab?.focus({ preventScroll: true });
       audio.playTap();
     });
     btnCloseLevels.addEventListener('click', () => {
