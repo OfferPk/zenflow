@@ -1005,6 +1005,8 @@ html, body {
     max-height: calc(100dvh - 24px);
     overflow-y: auto;
   }
+
+  .victory-card .modal-actions .btn { scroll-margin-block: 8px; }
 }
 
 @media (orientation: landscape) and (max-height: 360px) {
