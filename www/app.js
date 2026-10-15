@@ -10,12 +10,15 @@
   const canvas = document.getElementById('flow-canvas');
   const ctx = canvas.getContext('2d');
   const boardWrapper = document.getElementById('board-wrapper');
+  const boardStatus = document.getElementById('board-keyboard-status');
 
   // HUD Elements
   const hudPackName = document.getElementById('hud-pack-name');
   const hudLevelTitle = document.getElementById('hud-level-title');
   const hudFlows = document.getElementById('hud-flows');
   const hudPipe = document.getElementById('hud-pipe');
+  const hudPipeMeter = document.getElementById('hud-pipe-meter');
+  const hudPipeFill = document.getElementById('hud-pipe-fill');
   const hudMoves = document.getElementById('hud-moves');
   const hudTime = document.getElementById('hud-time');
 
@@ -68,6 +71,8 @@
   let game = null;
   let isPointerDown = false;
   let lastHoverCell = null;
+  let keyboardCursor = null;
+  let isKeyboardPathActive = false;
   let cellSize = 60;
   let boardOffset = { x: 0, y: 0 };
   let pulsePhase = 0;
@@ -142,6 +147,9 @@
 
     const levelData = levels[currentLevelIdx];
     game = new window.ZenFlow.ZenFlowGame(levelData);
+    keyboardCursor = game.endpoints[0] ? { ...game.endpoints[0].a } : { r: 0, c: 0 };
+    isKeyboardPathActive = false;
+    boardStatus.textContent = '';
 
     isLevelWon = false;
     modalVictory.classList.add('hidden');
@@ -186,6 +194,8 @@
 
     const coverage = game.getCoverage();
     hudPipe.textContent = `${coverage.percentage}%`;
+    hudPipeFill.style.width = `${coverage.percentage}%`;
+    hudPipeMeter.setAttribute('aria-valuenow', String(coverage.percentage));
     hudMoves.textContent = String(game.moves);
 
     // Navigation buttons state
@@ -202,7 +212,7 @@
     const availableWidth = rect.width - 24;
     const availableHeight = rect.height - 24;
     const rawDim = Math.min(availableWidth, availableHeight, 520);
-    const side = Math.max(rawDim, 260);
+    const side = Math.max(rawDim, 1);
 
     canvas.width = Math.floor(side * dpr);
     canvas.height = Math.floor(side * dpr);
@@ -234,6 +244,31 @@
 
     // Draw endpoints
     drawEndpoints();
+
+    if (document.activeElement === canvas) {
+      drawKeyboardCursor();
+    }
+  }
+
+  function drawKeyboardCursor() {
+    if (!keyboardCursor) return;
+
+    const inset = Math.max(3, cellSize * 0.06);
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(
+      keyboardCursor.c * cellSize + inset,
+      keyboardCursor.r * cellSize + inset,
+      cellSize - inset * 2,
+      cellSize - inset * 2,
+      Math.min(10, cellSize * 0.18)
+    );
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(2, cellSize * 0.045);
+    ctx.shadowColor = '#00C7BE';
+    ctx.shadowBlur = Math.max(6, cellSize * 0.14);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawGrid(w, h) {
@@ -393,6 +428,8 @@
     const cell = getCellFromEvent(evt);
     if (!cell) return;
 
+    keyboardCursor = cell;
+    isKeyboardPathActive = false;
     isPointerDown = true;
     lastHoverCell = cell;
 
@@ -410,6 +447,7 @@
 
     const cell = getCellFromEvent(evt);
     if (!cell) return;
+    keyboardCursor = cell;
 
     if (lastHoverCell && lastHoverCell.r === cell.r && lastHoverCell.c === cell.c) {
       return;
@@ -440,11 +478,118 @@
     lastHoverCell = null;
 
     const activeColor = game.endPath();
+    isKeyboardPathActive = false;
     if (game.isLevelComplete()) {
       triggerVictory();
     }
     updateHUD();
     render();
+  }
+
+  function announceBoardStatus(message) {
+    boardStatus.textContent = message;
+  }
+
+  function handleBoardKeydown(event) {
+    if (event.target !== canvas) return false;
+
+    const directions = {
+      ArrowUp: { r: -1, c: 0 },
+      ArrowDown: { r: 1, c: 0 },
+      ArrowLeft: { r: 0, c: -1 },
+      ArrowRight: { r: 0, c: 1 }
+    };
+    const direction = directions[event.key];
+    const isActivateKey = event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar';
+    if (!direction && !isActivateKey) return false;
+
+    event.preventDefault();
+    if (isLevelWon) {
+      announceBoardStatus('This level is complete. Choose Replay or Next Level in the victory dialog.');
+      return true;
+    }
+
+    if (direction) {
+      const nextCell = {
+        r: keyboardCursor.r + direction.r,
+        c: keyboardCursor.c + direction.c
+      };
+
+      if (!game.isValidCoord(nextCell.r, nextCell.c)) {
+        announceBoardStatus(`Board edge. Row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        return true;
+      }
+
+      if (!isKeyboardPathActive) {
+        keyboardCursor = nextCell;
+        announceBoardStatus(`Row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        render();
+        return true;
+      }
+
+      const result = game.extendPath(nextCell.r, nextCell.c);
+      if (!result || result.status === 'blocked' || result.status === 'already_complete') {
+        announceBoardStatus(result?.status === 'blocked'
+          ? 'That cell is another color’s endpoint. The path has not moved.'
+          : 'The path cannot move there. Use an adjacent cell or press Enter to finish.');
+        return true;
+      }
+
+      keyboardCursor = nextCell;
+      if (result.status === 'connected') audio.playConnect(result.colorId);
+      else if (result.status === 'backtrack') audio.playDisconnect(result.colorId);
+      else audio.playStep(result.colorId);
+
+      if (result.status === 'connected') {
+        game.endPath();
+        isKeyboardPathActive = false;
+        updateHUD();
+        render();
+        if (game.isLevelComplete()) {
+          announceBoardStatus('All flows connected. Level complete.');
+          triggerVictory();
+        } else {
+          announceBoardStatus(`Flow connected at row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        }
+        return true;
+      }
+
+      updateHUD();
+      render();
+      announceBoardStatus(`Path ${result.status === 'backtrack' ? 'shortened' : 'extended'} to row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+      return true;
+    }
+
+    if (isKeyboardPathActive) {
+      game.endPath();
+      isKeyboardPathActive = false;
+      announceBoardStatus('Path ended. Use Undo to remove it or select a colored endpoint to continue.');
+      render();
+      return true;
+    }
+
+    audio.init();
+    const result = game.startPath(keyboardCursor.r, keyboardCursor.c);
+    if (!result) {
+      announceBoardStatus('Select a colored endpoint or an existing pipe cell to start a path.');
+      return true;
+    }
+
+    isKeyboardPathActive = true;
+    audio.playStep(result.colorId);
+    updateHUD();
+    render();
+    announceBoardStatus(`Path started at row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}. Use arrow keys to draw; press Enter or Space to finish.`);
+    return true;
+  }
+
+  function handleCanvasBlur() {
+    if (!isKeyboardPathActive || !game) return;
+    game.endPath();
+    isKeyboardPathActive = false;
+    updateHUD();
+    render();
+    announceBoardStatus('Path ended when focus left the board. Use Undo to remove it or select a colored endpoint to continue.');
   }
 
   // --- Victory & Modals ---
@@ -477,7 +622,8 @@
     const secs = String(elapsedSeconds % 60).padStart(2, '0');
     vicTime.textContent = `${mins}:${secs}`;
 
-    modalVictory.classList.remove('hidden');
+    isKeyboardPathActive = false;
+    openManagedDialog(modalVictory, canvas, btnVicReplay);
     runConfetti();
   }
 
@@ -538,24 +684,98 @@
     animConfetti();
   }
 
+  // --- Keyboard-managed dialogs ---
+  const DIALOG_FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  let activeManagedDialog = null;
+  let dialogReturnFocus = null;
+
+  function getDialogFocusableElements(dialog) {
+    return Array.from(dialog.querySelectorAll(DIALOG_FOCUSABLE_SELECTOR)).filter((element) =>
+      element.getClientRects().length > 0 && element.getAttribute('aria-hidden') !== 'true'
+    );
+  }
+
+  function openManagedDialog(dialog, returnTarget, initialTarget) {
+    if (activeManagedDialog && activeManagedDialog !== dialog) {
+      closeManagedDialog(activeManagedDialog, false);
+    }
+    activeManagedDialog = dialog;
+    dialogReturnFocus = returnTarget;
+    dialog.classList.remove('hidden');
+    const target = initialTarget || getDialogFocusableElements(dialog)[0];
+    if (target) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }
+
+  function closeManagedDialog(dialog = activeManagedDialog, restoreFocus = true) {
+    if (!dialog) return;
+    dialog.classList.add('hidden');
+    if (dialog !== activeManagedDialog) return;
+
+    const returnTarget = dialogReturnFocus;
+    activeManagedDialog = null;
+    dialogReturnFocus = null;
+    if (restoreFocus && returnTarget && returnTarget.isConnected) {
+      returnTarget.focus({ preventScroll: true });
+    }
+  }
+
+  function handleManagedDialogKeydown(event) {
+    if (!activeManagedDialog) return false;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeManagedDialog();
+      return true;
+    }
+    if (event.key !== 'Tab') return true;
+
+    const focusable = getDialogFocusableElements(activeManagedDialog);
+    if (!focusable.length) {
+      event.preventDefault();
+      activeManagedDialog.focus({ preventScroll: true });
+      return true;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const focusIsOutside = !activeManagedDialog.contains(document.activeElement);
+    if (event.shiftKey && (document.activeElement === first || focusIsOutside)) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && (document.activeElement === last || focusIsOutside)) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
+    return true;
+  }
+
   // --- Level Selection Modal ---
-  function openLevelSelect() {
+  function openLevelSelect(returnTarget) {
     renderPackTabs();
     renderLevelsGrid();
-    modalLevels.classList.remove('hidden');
+    openManagedDialog(modalLevels, returnTarget, btnCloseLevels);
   }
 
   function renderPackTabs() {
     packTabsContainer.innerHTML = '';
     PACKS.forEach((pack) => {
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = `pack-tab ${pack.id === currentPackId ? 'active' : ''}`;
+      btn.id = `pack-tab-${pack.id}`;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(pack.id === currentPackId));
+      btn.setAttribute('aria-controls', 'levels-grid-container');
+      btn.tabIndex = pack.id === currentPackId ? 0 : -1;
       btn.textContent = pack.name;
       btn.style.setProperty('--tab-accent', pack.color);
       btn.addEventListener('click', () => {
         currentPackId = pack.id;
         renderPackTabs();
         renderLevelsGrid();
+        packTabsContainer.querySelector('.pack-tab.active')?.focus({ preventScroll: true });
         audio.playTap();
       });
       packTabsContainer.appendChild(btn);
@@ -564,14 +784,21 @@
 
   function renderLevelsGrid() {
     levelsGridContainer.innerHTML = '';
+    levelsGridContainer.setAttribute('role', 'tabpanel');
+    levelsGridContainer.setAttribute('aria-labelledby', `pack-tab-${currentPackId}`);
     const levels = getPackLevels(currentPackId);
 
     levels.forEach((lvl, idx) => {
       const saved = progressData[lvl.id] || { stars: 0 };
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.className = `level-grid-btn ${saved.stars > 0 ? 'completed' : ''} ${
         idx === currentLevelIdx && lvl.packId === currentPackId ? 'current' : ''
       }`;
+      btn.setAttribute('aria-label', `Level ${idx + 1}, ${saved.stars || 0} of 3 stars`);
+      if (idx === currentLevelIdx && lvl.packId === currentPackId) {
+        btn.setAttribute('aria-current', 'step');
+      }
 
       btn.innerHTML = `
         <span class="lvl-num">${idx + 1}</span>
@@ -580,6 +807,7 @@
 
       btn.addEventListener('click', () => {
         audio.playTap();
+        closeManagedDialog(modalLevels);
         startLevel(currentPackId, idx);
       });
 
@@ -598,16 +826,17 @@
     }
   }
 
-  function openSettings() {
+  function openSettings(returnTarget) {
     toggleColorblind.checked = userSettings.colorblind;
     toggleHaptics.checked = userSettings.haptics;
-    modalSettings.classList.remove('hidden');
+    openManagedDialog(modalSettings, returnTarget, btnCloseSettings);
   }
 
   // --- Event Listeners Registration ---
   function registerEvents() {
     // Canvas pointer events
     canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('blur', handleCanvasBlur);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerUp);
@@ -625,29 +854,58 @@
     // Menus & Modals
     btnMenu.addEventListener('click', () => {
       audio.playTap();
-      openLevelSelect();
+      openLevelSelect(btnMenu);
     });
     btnPackSwitch.addEventListener('click', () => {
       audio.playTap();
-      openLevelSelect();
+      openLevelSelect(btnPackSwitch);
+    });
+    btnPackSwitch.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        audio.playTap();
+        openLevelSelect(btnPackSwitch);
+      }
+    });
+    packTabsContainer.addEventListener('keydown', (event) => {
+      if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+      const tabs = Array.from(packTabsContainer.querySelectorAll('[role="tab"]'));
+      const currentIndex = tabs.indexOf(document.activeElement);
+      if (currentIndex < 0 || !tabs.length) return;
+
+      event.preventDefault();
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+      else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else nextIndex = tabs.length - 1;
+
+      currentPackId = PACKS[nextIndex].id;
+      renderPackTabs();
+      renderLevelsGrid();
+      const activeTab = packTabsContainer.querySelector('.pack-tab.active');
+      activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      activeTab?.focus({ preventScroll: true });
+      audio.playTap();
     });
     btnCloseLevels.addEventListener('click', () => {
       audio.playTap();
-      modalLevels.classList.add('hidden');
+      closeManagedDialog(modalLevels);
     });
 
     btnSettings.addEventListener('click', () => {
       audio.playTap();
-      openSettings();
+      openSettings(btnSettings);
     });
     btnCloseSettings.addEventListener('click', () => {
       audio.playTap();
-      modalSettings.classList.add('hidden');
+      closeManagedDialog(modalSettings);
     });
 
     // Undo, Reset, Hint, Navigation
     btnUndo.addEventListener('click', () => {
       if (game.undo()) {
+        isKeyboardPathActive = false;
         audio.playTap();
         updateHUD();
         render();
@@ -656,6 +914,7 @@
 
     btnReset.addEventListener('click', () => {
       audio.playTap();
+      isKeyboardPathActive = false;
       game.reset();
       resetTimer();
       startTimer();
@@ -664,6 +923,10 @@
     });
 
     btnHint.addEventListener('click', () => {
+      if (isKeyboardPathActive) {
+        game.endPath();
+        isKeyboardPathActive = false;
+      }
       const hint = game.getHint();
       if (hint) {
         audio.playHint();
@@ -688,11 +951,13 @@
     // Victory actions
     btnVicReplay.addEventListener('click', () => {
       audio.playTap();
+      closeManagedDialog(modalVictory);
       startLevel(currentPackId, currentLevelIdx);
     });
 
     btnVicNext.addEventListener('click', () => {
       audio.playTap();
+      closeManagedDialog(modalVictory);
       const levels = getPackLevels(currentPackId);
       if (currentLevelIdx < levels.length - 1) {
         startLevel(currentPackId, currentLevelIdx + 1);
@@ -725,26 +990,34 @@
         try {
           localStorage.removeItem(STORAGE_KEY_PROGRESS);
         } catch (e) {}
-        modalSettings.classList.add('hidden');
+        closeManagedDialog(modalSettings);
         startLevel(currentPackId, 0);
       }
     });
 
     // Keyboard Shortcuts for accessibility
     window.addEventListener('keydown', (e) => {
+      if (handleManagedDialogKeydown(e)) return;
+      if (handleBoardKeydown(e)) return;
       if (e.key === 'u' || e.key === 'z') {
         if (game.undo()) {
+          isKeyboardPathActive = false;
           audio.playTap();
           updateHUD();
           render();
         }
       } else if (e.key === 'r') {
+        isKeyboardPathActive = false;
         game.reset();
         resetTimer();
         startTimer();
         updateHUD();
         render();
       } else if (e.key === 'h') {
+        if (isKeyboardPathActive) {
+          game.endPath();
+          isKeyboardPathActive = false;
+        }
         const hint = game.getHint();
         if (hint) {
           audio.playHint();
