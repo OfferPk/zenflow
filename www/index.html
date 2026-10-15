@@ -75,8 +75,10 @@
     <!-- Board Arena -->
     <main class="board-area">
       <div class="board-wrapper" id="board-wrapper">
-        <canvas id="flow-canvas" aria-label="Game board. Connect matching colored nodes to complete each flow."></canvas>
+        <canvas id="flow-canvas" tabindex="0" role="application" aria-label="ZenFlow game board" aria-describedby="board-keyboard-help board-keyboard-status" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter Space"></canvas>
       </div>
+      <p id="board-keyboard-help" class="sr-only">Use the arrow keys to move the highlighted cell. Press Enter or Space on a colored endpoint or existing pipe cell to start a path, then use the arrow keys to draw one cell at a time. Press Enter or Space to finish a path. Use Tab to leave the board.</p>
+      <p id="board-keyboard-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     </main>
 
     <!-- Bottom Actions Toolbar -->

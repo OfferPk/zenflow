@@ -10,6 +10,7 @@
   const canvas = document.getElementById('flow-canvas');
   const ctx = canvas.getContext('2d');
   const boardWrapper = document.getElementById('board-wrapper');
+  const boardStatus = document.getElementById('board-keyboard-status');
 
   // HUD Elements
   const hudPackName = document.getElementById('hud-pack-name');
@@ -70,6 +71,8 @@
   let game = null;
   let isPointerDown = false;
   let lastHoverCell = null;
+  let keyboardCursor = null;
+  let isKeyboardPathActive = false;
   let cellSize = 60;
   let boardOffset = { x: 0, y: 0 };
   let pulsePhase = 0;
@@ -144,6 +147,9 @@
 
     const levelData = levels[currentLevelIdx];
     game = new window.ZenFlow.ZenFlowGame(levelData);
+    keyboardCursor = game.endpoints[0] ? { ...game.endpoints[0].a } : { r: 0, c: 0 };
+    isKeyboardPathActive = false;
+    boardStatus.textContent = '';
 
     isLevelWon = false;
     modalVictory.classList.add('hidden');
@@ -238,6 +244,31 @@
 
     // Draw endpoints
     drawEndpoints();
+
+    if (document.activeElement === canvas) {
+      drawKeyboardCursor();
+    }
+  }
+
+  function drawKeyboardCursor() {
+    if (!keyboardCursor) return;
+
+    const inset = Math.max(3, cellSize * 0.06);
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(
+      keyboardCursor.c * cellSize + inset,
+      keyboardCursor.r * cellSize + inset,
+      cellSize - inset * 2,
+      cellSize - inset * 2,
+      Math.min(10, cellSize * 0.18)
+    );
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(2, cellSize * 0.045);
+    ctx.shadowColor = '#00C7BE';
+    ctx.shadowBlur = Math.max(6, cellSize * 0.14);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawGrid(w, h) {
@@ -397,6 +428,8 @@
     const cell = getCellFromEvent(evt);
     if (!cell) return;
 
+    keyboardCursor = cell;
+    isKeyboardPathActive = false;
     isPointerDown = true;
     lastHoverCell = cell;
 
@@ -414,6 +447,7 @@
 
     const cell = getCellFromEvent(evt);
     if (!cell) return;
+    keyboardCursor = cell;
 
     if (lastHoverCell && lastHoverCell.r === cell.r && lastHoverCell.c === cell.c) {
       return;
@@ -444,11 +478,118 @@
     lastHoverCell = null;
 
     const activeColor = game.endPath();
+    isKeyboardPathActive = false;
     if (game.isLevelComplete()) {
       triggerVictory();
     }
     updateHUD();
     render();
+  }
+
+  function announceBoardStatus(message) {
+    boardStatus.textContent = message;
+  }
+
+  function handleBoardKeydown(event) {
+    if (event.target !== canvas) return false;
+
+    const directions = {
+      ArrowUp: { r: -1, c: 0 },
+      ArrowDown: { r: 1, c: 0 },
+      ArrowLeft: { r: 0, c: -1 },
+      ArrowRight: { r: 0, c: 1 }
+    };
+    const direction = directions[event.key];
+    const isActivateKey = event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar';
+    if (!direction && !isActivateKey) return false;
+
+    event.preventDefault();
+    if (isLevelWon) {
+      announceBoardStatus('This level is complete. Choose Replay or Next Level in the victory dialog.');
+      return true;
+    }
+
+    if (direction) {
+      const nextCell = {
+        r: keyboardCursor.r + direction.r,
+        c: keyboardCursor.c + direction.c
+      };
+
+      if (!game.isValidCoord(nextCell.r, nextCell.c)) {
+        announceBoardStatus(`Board edge. Row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        return true;
+      }
+
+      if (!isKeyboardPathActive) {
+        keyboardCursor = nextCell;
+        announceBoardStatus(`Row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        render();
+        return true;
+      }
+
+      const result = game.extendPath(nextCell.r, nextCell.c);
+      if (!result || result.status === 'blocked' || result.status === 'already_complete') {
+        announceBoardStatus(result?.status === 'blocked'
+          ? 'That cell is another color’s endpoint. The path has not moved.'
+          : 'The path cannot move there. Use an adjacent cell or press Enter to finish.');
+        return true;
+      }
+
+      keyboardCursor = nextCell;
+      if (result.status === 'connected') audio.playConnect(result.colorId);
+      else if (result.status === 'backtrack') audio.playDisconnect(result.colorId);
+      else audio.playStep(result.colorId);
+
+      if (result.status === 'connected') {
+        game.endPath();
+        isKeyboardPathActive = false;
+        updateHUD();
+        render();
+        if (game.isLevelComplete()) {
+          announceBoardStatus('All flows connected. Level complete.');
+          triggerVictory();
+        } else {
+          announceBoardStatus(`Flow connected at row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+        }
+        return true;
+      }
+
+      updateHUD();
+      render();
+      announceBoardStatus(`Path ${result.status === 'backtrack' ? 'shortened' : 'extended'} to row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}.`);
+      return true;
+    }
+
+    if (isKeyboardPathActive) {
+      game.endPath();
+      isKeyboardPathActive = false;
+      announceBoardStatus('Path ended. Use Undo to remove it or select a colored endpoint to continue.');
+      render();
+      return true;
+    }
+
+    audio.init();
+    const result = game.startPath(keyboardCursor.r, keyboardCursor.c);
+    if (!result) {
+      announceBoardStatus('Select a colored endpoint or an existing pipe cell to start a path.');
+      return true;
+    }
+
+    isKeyboardPathActive = true;
+    audio.playStep(result.colorId);
+    updateHUD();
+    render();
+    announceBoardStatus(`Path started at row ${keyboardCursor.r + 1}, column ${keyboardCursor.c + 1}. Use arrow keys to draw; press Enter or Space to finish.`);
+    return true;
+  }
+
+  function handleCanvasBlur() {
+    if (!isKeyboardPathActive || !game) return;
+    game.endPath();
+    isKeyboardPathActive = false;
+    updateHUD();
+    render();
+    announceBoardStatus('Path ended when focus left the board. Use Undo to remove it or select a colored endpoint to continue.');
   }
 
   // --- Victory & Modals ---
@@ -481,7 +622,8 @@
     const secs = String(elapsedSeconds % 60).padStart(2, '0');
     vicTime.textContent = `${mins}:${secs}`;
 
-    modalVictory.classList.remove('hidden');
+    isKeyboardPathActive = false;
+    openManagedDialog(modalVictory, canvas, btnVicReplay);
     runConfetti();
   }
 
@@ -691,6 +833,7 @@
   function registerEvents() {
     // Canvas pointer events
     canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('blur', handleCanvasBlur);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerUp);
@@ -759,6 +902,7 @@
     // Undo, Reset, Hint, Navigation
     btnUndo.addEventListener('click', () => {
       if (game.undo()) {
+        isKeyboardPathActive = false;
         audio.playTap();
         updateHUD();
         render();
@@ -767,6 +911,7 @@
 
     btnReset.addEventListener('click', () => {
       audio.playTap();
+      isKeyboardPathActive = false;
       game.reset();
       resetTimer();
       startTimer();
@@ -775,6 +920,10 @@
     });
 
     btnHint.addEventListener('click', () => {
+      if (isKeyboardPathActive) {
+        game.endPath();
+        isKeyboardPathActive = false;
+      }
       const hint = game.getHint();
       if (hint) {
         audio.playHint();
@@ -799,11 +948,13 @@
     // Victory actions
     btnVicReplay.addEventListener('click', () => {
       audio.playTap();
+      closeManagedDialog(modalVictory);
       startLevel(currentPackId, currentLevelIdx);
     });
 
     btnVicNext.addEventListener('click', () => {
       audio.playTap();
+      closeManagedDialog(modalVictory);
       const levels = getPackLevels(currentPackId);
       if (currentLevelIdx < levels.length - 1) {
         startLevel(currentPackId, currentLevelIdx + 1);
@@ -844,19 +995,26 @@
     // Keyboard Shortcuts for accessibility
     window.addEventListener('keydown', (e) => {
       if (handleManagedDialogKeydown(e)) return;
+      if (handleBoardKeydown(e)) return;
       if (e.key === 'u' || e.key === 'z') {
         if (game.undo()) {
+          isKeyboardPathActive = false;
           audio.playTap();
           updateHUD();
           render();
         }
       } else if (e.key === 'r') {
+        isKeyboardPathActive = false;
         game.reset();
         resetTimer();
         startTimer();
         updateHUD();
         render();
       } else if (e.key === 'h') {
+        if (isKeyboardPathActive) {
+          game.endPath();
+          isKeyboardPathActive = false;
+        }
         const hint = game.getHint();
         if (hint) {
           audio.playHint();
