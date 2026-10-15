@@ -703,7 +703,10 @@
     dialogReturnFocus = returnTarget;
     dialog.classList.remove('hidden');
     const target = initialTarget || getDialogFocusableElements(dialog)[0];
-    if (target) target.focus({ preventScroll: true });
+    if (target) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
   }
 
   function closeManagedDialog(dialog = activeManagedDialog, restoreFocus = true) {
